@@ -233,11 +233,20 @@ function SettingsTab({ config, saveConfig, token, showToast }) {
 }
 
 // ── Mail Gen ──────────────────────────────────────
+const TONES = [
+  { value: "熱量高め・情熱的", label: "🔥 熱量高め", desc: "情熱的で熱いメッセージ" },
+  { value: "丁寧・フォーマル", label: "🎩 丁寧・フォーマル", desc: "礼儀正しく誠実なトーン" },
+  { value: "カジュアル・親しみやすい", label: "😊 カジュアル", desc: "話しかけるような自然な文体" },
+  { value: "簡潔・シンプル", label: "⚡ 簡潔・シンプル", desc: "要点を絞ったコンパクトな文章" },
+];
+
 function MailGenTab({ config, token, showToast }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [genAll, setGenAll] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tone, setTone] = useState("熱量高め・情熱的");
+  const [customInstruction, setCustomInstruction] = useState("");
 
   const colIdx = (col) => col.toUpperCase().charCodeAt(0) - 65;
 
@@ -275,11 +284,11 @@ function MailGenTab({ config, token, showToast }) {
       }
       const mail = await callClaude(
         `あなたは人材紹介会社のエースコンサルタントです。求職者へのスカウトメールを以下の条件で書いてください。
-- トーン：熱量高め・情熱的
+- トーン：${tone}
 - 含める要素：推しポイントの強調、応募メリット・待遇
 - 件名を「件名：〇〇」の形式で冒頭に記載
 - 本文300〜500文字
-- 自然な日本語`,
+- 自然な日本語${customInstruction ? `\n- 追加指示：${customInstruction}` : ""}`,
         `以下の求人情報をもとにスカウトメールを作成してください。\n\n${info}`
       );
       setJobs(j => j.map((x, i) => i === idx ? { ...x, mail, loading: false } : x));
@@ -318,6 +327,31 @@ function MailGenTab({ config, token, showToast }) {
             <button style={{ ...S.btnSuccess, opacity: saving ? 0.6 : 1 }} onClick={saveToSheets} disabled={saving}>{saving ? "保存中..." : "📤 スプシに保存"}</button>
           </>}
         </div>
+      </div>
+
+      {/* ニュアンス設定 */}
+      <div style={S.card}>
+        <h3 style={S.cardTitle}>🎨 メールのニュアンス設定</h3>
+        <label style={S.label}>トーンを選択</label>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+          {TONES.map(t => (
+            <button key={t.value} onClick={() => setTone(t.value)} style={{
+              ...S.toneBtn,
+              ...(tone === t.value ? S.toneBtnActive : {}),
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{t.label}</div>
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>{t.desc}</div>
+            </button>
+          ))}
+        </div>
+        <label style={S.label}>追加指示（任意）</label>
+        <textarea
+          style={{ ...S.input, minHeight: 60 }}
+          placeholder="例：冒頭に相手の経歴に触れる一文を入れてください　／　運送・物流業界向けの言葉を使ってください"
+          value={customInstruction}
+          onChange={e => setCustomInstruction(e.target.value)}
+        />
+        <div style={S.hint}>ここに入力した内容がすべての生成メールに反映されます</div>
       </div>
 
       {jobs.length === 0 ? (
@@ -609,4 +643,6 @@ const S = {
   stepTitle: { fontWeight: 700, fontSize: 14, color: "#1e293b", marginBottom: 3 },
   stepBody: { fontSize: 13, color: "#64748b", lineHeight: 1.6 },
   toast: { position: "fixed", bottom: 24, right: 24, color: "#fff", borderRadius: 10, padding: "12px 20px", fontWeight: 700, fontSize: 13, zIndex: 9999, boxShadow: "0 8px 30px rgba(0,0,0,0.15)" },
+  toneBtn: { background: "#f8fafc", border: "1.5px solid #e0f7fa", borderRadius: 10, padding: "10px 16px", cursor: "pointer", textAlign: "left", minWidth: 140, transition: "all .15s" },
+  toneBtnActive: { background: "#e8f5f5", border: "2px solid #2A9D9E", color: "#1a7a7b" },
 };

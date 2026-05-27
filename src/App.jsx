@@ -257,7 +257,7 @@ function MailGenTab({ config, token, showToast }) {
     if (!config.spreadsheetId) return showToast("設定タブでIDを入力してください", "error");
     setLoading(true);
     try {
-      const res = await sheetsGet(token, config.spreadsheetId, `${config.jobSheet}!A${config.jobStartRow}:Z200`);
+      const res = await sheetsGet(token, config.spreadsheetId, `${config.jobSheet}!A${config.jobStartRow}:Z`);
       if (res.error) throw new Error(res.error.message);
       const rows = res.values || [];
       const checkIdx = colIdx(config.jobCheckCol || "M");
@@ -514,7 +514,7 @@ function AnalysisTab({ config, token, showToast }) {
     try {
       const [rRes, jRes] = await Promise.all([
         sheetsGet(token, config.spreadsheetId, `${config.resultSheet}!A2:J200`),
-        sheetsGet(token, config.spreadsheetId, `${config.jobSheet}!A${config.jobStartRow}:Z200`),
+        sheetsGet(token, config.spreadsheetId, `${config.jobSheet}!A${config.jobStartRow}:Z`),
       ]);
       setResults((rRes.values || []).map(r => ({ jobName: r[0], mailVersion: r[1], sentCount: Number(r[2]) || 0, appliedCount: Number(r[3]) || 0, avgAge: r[4], genderRatio: r[5], experienceYears: r[6] })));
       const uIdx = config.jobUrlCol.toUpperCase().charCodeAt(0) - 65;

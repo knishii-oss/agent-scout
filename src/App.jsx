@@ -6,11 +6,11 @@ const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-20250514";
 const STORAGE_KEY = "scoutflow_v2";
 
-const callClaude = async (system, user) => {
+const callClaude = async (system, user, url = "") => {
   const res = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system, prompt: user }),
+    body: JSON.stringify({ system, prompt: user, url }),
   });
   const d = await res.json();
   return d.text || "";
@@ -288,17 +288,8 @@ function MailGenTab({ config, token, showToast }) {
     const job = jobs[idx];
     setJobs(j => j.map((x, i) => i === idx ? { ...x, loading: true } : x));
     try {
-      let info = job.points;
-      if (job.url) {
-        try {
-          const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(job.url)}`);
-          const j = await r.json();
-          const text = j.contents?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 2000) || "";
-          info = `【求人ページ】\n${text}\n\n【推しポイント・強み】\n${job.points}\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
-        } catch {
-          info = `【推しポイント・強み】\n${job.points}\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
-        }
-      }
+      const candidateInfo = `\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
+      const info = `【推しポイント・強み】\n${job.points}${candidateInfo}`;
       const mail = await callClaude(
         `あなたは運送・物流業界専門の人材紹介会社のエースコンサルタントです。求職者へのスカウトメールを以下の条件で書いてください。
 - トーン：${tone}
@@ -308,7 +299,8 @@ function MailGenTab({ config, token, showToast }) {
 - 件名を「件名：〇〇」の形式で冒頭に記載
 - 本文300〜500文字
 - 自然な日本語${customInstruction ? `\n- 追加指示：${customInstruction}` : ""}`,
-        `以下の求人情報をもとにスカウトメールを作成してください。\n\n${info}`
+        `以下の求人情報をもとにスカウトメールを作成してください。\n\n${info}`,
+        job.url
       );
       if (!mail) {
         showToast("メールの生成に失敗しました（空のレスポンス）", "error");

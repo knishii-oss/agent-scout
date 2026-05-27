@@ -298,6 +298,7 @@ function MailGenTab({ config, token, showToast }) {
         } catch {
           info = `【推しポイント・強み】\n${job.points}\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
         }
+      }
       const mail = await callClaude(
         `あなたは運送・物流業界専門の人材紹介会社のエースコンサルタントです。求職者へのスカウトメールを以下の条件で書いてください。
 - トーン：${tone}

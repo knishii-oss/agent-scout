@@ -268,7 +268,7 @@ function MailGenTab({ config, token, showToast }) {
           return checked === true || checked === "TRUE" || checked === "true";
         })
         .map(({ r, i }) => ({
-          rowNum: Number(config.jobStartRow) + i, name: r[0] || `案件 ${i + 1}`,
+          rowNum: Number(config.jobStartRow) + i, name: r[colIdx(config.mailCompanyCol || "C")] || r[0] || `案件 ${i + 1}`,
           company: r[colIdx(config.mailCompanyCol || "C")] || "",
           draftId: r[colIdx(config.mailDraftIdCol || "D")] || "",
           url: r[colIdx(config.jobUrlCol)] || "",

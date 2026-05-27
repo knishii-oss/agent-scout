@@ -46,7 +46,7 @@ export default function App() {
   const [userInfo, setUserInfo] = useState(null);
   const [config, setConfig] = useState(() => loadLocal().config || {
     spreadsheetId: "", jobSheet: "案件リスト", jobUrlCol: "B", jobPointsCol: "C",
-    jobMailCol: "D", jobStartRow: 2, resultSheet: "実績データ",
+    jobMailCol: "D", jobStartRow: 2, resultSheet: "実績データ", jobCheckCol: "M",
   });
   const [toast, setToast] = useState(null);
   const tokenClientRef = useRef(null);
@@ -201,7 +201,7 @@ function SettingsTab({ config, saveConfig, token, showToast }) {
           {[
             ["jobSheet", "案件シート名", "案件リスト"], ["jobStartRow", "データ開始行", "2"],
             ["jobUrlCol", "求人URL列", "B"], ["jobPointsCol", "推しポイント列", "C"],
-            ["jobMailCol", "メール出力列", "D"], ["resultSheet", "実績シート名", "実績データ"],
+            ["jobMailCol", "メール出力列", "D"], ["jobCheckCol", "チェックボックス列", "M"], ["resultSheet", "実績シート名", "実績データ"],
           ].map(([key, label, ph]) => (
             <div key={key}>
               <label style={S.label}>{label}</label>
@@ -258,13 +258,20 @@ function MailGenTab({ config, token, showToast }) {
       const res = await sheetsGet(token, config.spreadsheetId, `${config.jobSheet}!A${config.jobStartRow}:Z200`);
       if (res.error) throw new Error(res.error.message);
       const rows = res.values || [];
-      const parsed = rows.filter(r => r[colIdx(config.jobUrlCol)] || r[colIdx(config.jobPointsCol)]).map((r, i) => ({
-        rowNum: Number(config.jobStartRow) + i, name: r[0] || `案件 ${i + 1}`,
-        url: r[colIdx(config.jobUrlCol)] || "", points: r[colIdx(config.jobPointsCol)] || "",
-        mail: r[colIdx(config.jobMailCol)] || "", loading: false,
-      }));
+      const checkIdx = colIdx(config.jobCheckCol || "M");
+      const parsed = rows
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => {
+          const checked = r[checkIdx];
+          return checked === true || checked === "TRUE" || checked === "true";
+        })
+        .map(({ r, i }) => ({
+          rowNum: Number(config.jobStartRow) + i, name: r[0] || `案件 ${i + 1}`,
+          url: r[colIdx(config.jobUrlCol)] || "", points: r[colIdx(config.jobPointsCol)] || "",
+          mail: r[colIdx(config.jobMailCol)] || "", loading: false,
+        }));
       setJobs(parsed);
-      showToast(`${parsed.length}件の案件を読み込みました`);
+      showToast(`チェック済み ${parsed.length}件の案件を読み込みました`);
     } catch (e) { showToast(`読み込み失敗: ${e.message}`, "error"); }
     setLoading(false);
   };

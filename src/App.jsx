@@ -7,13 +7,13 @@ const MODEL = "claude-sonnet-4-20250514";
 const STORAGE_KEY = "scoutflow_v2";
 
 const callClaude = async (system, user) => {
-  const res = await fetch(ANTHROPIC_API, {
+  const res = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 1000, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ system, prompt: user }),
   });
   const d = await res.json();
-  return d.content?.[0]?.text || "";
+  return d.text || "";
 };
 
 const loadLocal = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } };

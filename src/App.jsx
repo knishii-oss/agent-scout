@@ -45,8 +45,10 @@ export default function App() {
   const [token, setToken] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [config, setConfig] = useState(() => loadLocal().config || {
-    spreadsheetId: "", jobSheet: "案件リスト", jobUrlCol: "B", jobPointsCol: "C",
+    spreadsheetId: "", jobSheet: "AG案件", jobUrlCol: "E", jobPointsCol: "Q",
     jobMailCol: "D", jobStartRow: 2, resultSheet: "実績データ", jobCheckCol: "M",
+    jobAgeCol: "N", jobAreaCol: "O", jobLicenseCol: "P",
+    mailSheet: "スカウト_文面履歴", mailCol: "C", mailCompanyCol: "C", mailDraftIdCol: "D",
   });
   const [toast, setToast] = useState(null);
   const tokenClientRef = useRef(null);
@@ -201,7 +203,7 @@ function SettingsTab({ config, saveConfig, token, showToast }) {
           {[
             ["jobSheet", "案件シート名", "案件リスト"], ["jobStartRow", "データ開始行", "2"],
             ["jobUrlCol", "求人URL列", "B"], ["jobPointsCol", "推しポイント列", "C"],
-            ["jobMailCol", "メール出力列", "D"], ["jobCheckCol", "チェックボックス列", "M"], ["resultSheet", "実績シート名", "実績データ"],
+            ["jobMailCol", "メール出力列", "D"], ["jobCheckCol", "チェックボックス列", "M"], ["jobAgeCol", "年齢列", "N"], ["jobAreaCol", "居住地列", "O"], ["jobLicenseCol", "保有免許列", "P"], ["mailSheet", "メール保存先シート名", "メール文章（空欄=案件シート）"], ["mailCol", "メール保存先列", "A"], ["resultSheet", "実績シート名", "実績データ"],
           ].map(([key, label, ph]) => (
             <div key={key}>
               <label style={S.label}>{label}</label>
@@ -267,7 +269,13 @@ function MailGenTab({ config, token, showToast }) {
         })
         .map(({ r, i }) => ({
           rowNum: Number(config.jobStartRow) + i, name: r[0] || `案件 ${i + 1}`,
-          url: r[colIdx(config.jobUrlCol)] || "", points: r[colIdx(config.jobPointsCol)] || "",
+          company: r[colIdx(config.mailCompanyCol || "C")] || "",
+          draftId: r[colIdx(config.mailDraftIdCol || "D")] || "",
+          url: r[colIdx(config.jobUrlCol)] || "",
+          points: r[colIdx(config.jobPointsCol)] || "",
+          age: r[colIdx(config.jobAgeCol || "N")] || "",
+          area: r[colIdx(config.jobAreaCol || "O")] || "",
+          license: r[colIdx(config.jobLicenseCol || "P")] || "",
           mail: r[colIdx(config.jobMailCol)] || "", loading: false,
         }));
       setJobs(parsed);
@@ -286,13 +294,16 @@ function MailGenTab({ config, token, showToast }) {
           const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(job.url)}`);
           const j = await r.json();
           const text = j.contents?.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 2000) || "";
-          info = `【求人ページ】\n${text}\n\n【推しポイント】\n${job.points}`;
-        } catch { info = `【推しポイント】\n${job.points}`; }
-      }
+          info = `【求人ページ】\n${text}\n\n【推しポイント・強み】\n${job.points}\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
+        } catch {
+          info = `【推しポイント・強み】\n${job.points}\n\n【対象者情報】\n年齢：${job.age || "不明"}\n居住地：${job.area || "不明"}\n保有免許：${job.license || "不明"}`;
+        }
       const mail = await callClaude(
-        `あなたは人材紹介会社のエースコンサルタントです。求職者へのスカウトメールを以下の条件で書いてください。
+        `あなたは運送・物流業界専門の人材紹介会社のエースコンサルタントです。求職者へのスカウトメールを以下の条件で書いてください。
 - トーン：${tone}
-- 含める要素：推しポイントの強調、応募メリット・待遇
+- 含める要素：推しポイント・強みのフィーチャー、応募メリット・待遇
+- 対象者の年齢・居住地・保有免許を考慮した内容にすること
+- 保有免許が複数の場合はすべて活かせる点をアピールすること
 - 件名を「件名：〇〇」の形式で冒頭に記載
 - 本文300〜500文字
 - 自然な日本語${customInstruction ? `\n- 追加指示：${customInstruction}` : ""}`,
@@ -313,9 +324,18 @@ function MailGenTab({ config, token, showToast }) {
     const toSave = jobs.filter(j => j.mail);
     if (!toSave.length) return showToast("保存するメールがありません", "error");
     setSaving(true);
+    const targetSheet = config.mailSheet && config.mailSheet.trim() ? config.mailSheet.trim() : config.jobSheet;
     try {
-      for (const job of toSave) await sheetsUpdate(token, config.spreadsheetId, `${config.jobSheet}!${config.jobMailCol}${job.rowNum}`, [[job.mail]]);
-      showToast(`${toSave.length}件をスプレッドシートに保存しました`);
+      if (config.mailSheet && config.mailSheet.trim()) {
+        // 別シートに保存：A列=企業名, B列=原稿ID, C列=文面 を1行ずつ追記
+        const rows = toSave.map(job => [job.company || "", job.draftId || "", job.mail]);
+        await sheetsAppend(token, config.spreadsheetId, `${targetSheet}!A:C`, rows);
+      } else {
+        for (const job of toSave) {
+          await sheetsUpdate(token, config.spreadsheetId, `${config.jobSheet}!${config.jobMailCol}${job.rowNum}`, [[job.mail]]);
+        }
+      }
+      showToast(`${toSave.length}件を「${targetSheet}」に保存しました`);
     } catch (e) { showToast(`保存失敗: ${e.message}`, "error"); }
     setSaving(false);
   };
@@ -380,8 +400,11 @@ function MailGenTab({ config, token, showToast }) {
                 </button>
               </div>
               <div style={S.grid2}>
-                <div><label style={S.label}>求人URL</label><div style={S.infoBox}>{job.url || "—"}</div></div>
-                <div><label style={S.label}>推しポイント</label><div style={S.infoBox}>{job.points || "—"}</div></div>
+                <div><label style={S.label}>求人URL（E列）</label><div style={S.infoBox}>{job.url || "—"}</div></div>
+                <div><label style={S.label}>推しポイント・強み（Q列）</label><div style={S.infoBox}>{job.points || "—"}</div></div>
+                <div><label style={S.label}>年齢（N列）</label><div style={S.infoBox}>{job.age || "—"}</div></div>
+                <div><label style={S.label}>居住地（O列）</label><div style={S.infoBox}>{job.area || "—"}</div></div>
+                <div style={{ gridColumn: "1/-1" }}><label style={S.label}>保有免許（P列）</label><div style={S.infoBox}>{job.license || "—"}</div></div>
               </div>
               {job.mail && <div style={{ marginTop: 12 }}>
                 <label style={S.label}>生成メール（編集可）</label>

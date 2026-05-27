@@ -314,7 +314,16 @@ function MailGenTab({ config, token, showToast }) {
 
   const generateAll = async () => {
     setGenAll(true);
-    for (let i = 0; i < jobs.length; i++) { if (jobs[i].url || jobs[i].points) await generateOne(i); }
+    const targets = jobs.map((j, i) => i).filter(i => jobs[i].url || jobs[i].points);
+    for (let n = 0; n < targets.length; n++) {
+      await generateOne(targets[n]);
+      if (n < targets.length - 1) {
+        // 1件ごとに15秒待機（Gemini無料枠の制限対策）
+        showToast(`${n + 1}/${targets.length}件生成完了。次の案件まで15秒待機中...`);
+        await new Promise(r => setTimeout(r, 15000));
+      }
+    }
+    showToast(`全${targets.length}件の生成が完了しました！`);
     setGenAll(false);
   };
 

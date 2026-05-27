@@ -5,7 +5,6 @@ export default async function handler(req, res) {
   try {
     const { system, prompt, url } = req.body;
     
-    // URLが指定されている場合はサーバー側で読み取り
     let urlContent = '';
     if (url) {
       try {
@@ -38,8 +37,10 @@ export default async function handler(req, res) {
       }
     );
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    res.status(200).json({ text });
+    console.log('Gemini response:', JSON.stringify(data).slice(0, 500));
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                 data.error?.message || '';
+    res.status(200).json({ text, debug: JSON.stringify(data).slice(0, 200) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

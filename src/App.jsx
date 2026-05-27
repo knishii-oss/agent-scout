@@ -310,8 +310,14 @@ function MailGenTab({ config, token, showToast }) {
 - 自然な日本語${customInstruction ? `\n- 追加指示：${customInstruction}` : ""}`,
         `以下の求人情報をもとにスカウトメールを作成してください。\n\n${info}`
       );
+      if (!mail) {
+        showToast("メールの生成に失敗しました（空のレスポンス）", "error");
+        setJobs(j => j.map((x, i) => i === idx ? { ...x, loading: false } : x));
+        return;
+      }
       setJobs(j => j.map((x, i) => i === idx ? { ...x, mail, loading: false } : x));
-    } catch { showToast("生成に失敗しました", "error"); setJobs(j => j.map((x, i) => i === idx ? { ...x, loading: false } : x)); }
+      showToast("メールを生成しました！");
+    } catch (e) { showToast(`生成に失敗しました: ${e.message}`, "error"); setJobs(j => j.map((x, i) => i === idx ? { ...x, loading: false } : x)); }
   };
 
   const generateAll = async () => {
